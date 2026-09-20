@@ -1,4 +1,4 @@
-# GameBase
+# GameBase https://zendex00.github.io/GameBase/
 
 Static Steam current-player tracker for GitHub Pages.
 
