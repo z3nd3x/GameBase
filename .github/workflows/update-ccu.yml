@@ -1,0 +1,64 @@
+name: Update GameBase CCU
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Update player counts
+        env:
+          GAME_IDS: "730 570 578080 3070070 559100 3241660 1172470 1172470 1172470 252490"
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import time
+          import urllib.request
+
+          ids = os.environ["GAME_IDS"].split()
+          players = {}
+
+          for appid in ids:
+              try:
+                  url = f"https://api.steampowered.com/ISteamUserStats/GetNumberOfCurrentPlayers/v1/?appid={appid}"
+                  with urllib.request.urlopen(url, timeout=15) as r:
+                      data = json.load(r)
+
+                  players[appid] = data.get("response", {}).get("player_count", 0)
+              except Exception as e:
+                  print(f"Failed for {appid}: {e}")
+
+          output = {
+              "updated_at": int(time.time()),
+              "source": "Steam GetNumberOfCurrentPlayers",
+              "players": players
+          }
+
+          with open("data/player-counts.json", "w") as f:
+              json.dump(output, f, indent=2)
+          PY
+
+      - name: Commit updated counts
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add data/player-counts.json
+
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "Update Steam player counts"
+            git push
+          fi
